@@ -29,19 +29,11 @@ Widget::Widget(QWidget *parent)
   path+="/list.txt";
   readFile(path);
   myT = new MyThread;
-
   thread = new QThread(this);
-
   myT->moveToThread(thread);
-
   connect(myT, &MyThread::mySignal, this, &Widget::dealSignal);
-
   connect(this, &Widget::startThread,myT, &MyThread::myTimeout);
-  //当窗口销毁时，关闭线程
   connect(this,&Widget::destroyed, this, &Widget::dealClose);
-
- // emit startThread();
-
   fff();
 }
 void Widget::readFile(QString path)
@@ -95,8 +87,6 @@ void Widget::dealSignal()
   m.setCookieJar(jar);
   m_reply=m.get(req);
   connect(m_reply,SIGNAL(finished()),this,SLOT(finishedSlot()));
-
-
 }
 void Widget::finishedSlot()
 {
@@ -127,22 +117,30 @@ void Widget::finishedSlot()
     QString t=current_time.toString();
     ui->textEdit->setText(t+"  请求正常");
     QSet <QString> set;
-    ui->listWidget->clear();ui->label->setText("在线人数："+QString::number(value2.toDouble()));livelist.clear();
+    QStringList list,titlelist,facelist;
+    ui->label->setText("在线人数："+QString::number(value2.toDouble()));livelist.clear();
         for(ii=0;ii<ja.count();ii++){
       QJsonObject arrObj= ja[ii].toObject();
       QString s=arrObj["uname"].toString();
-      ui->listWidget->setFont(list_font);
-      ui->listWidget->addItem(s);set<<s;
+      list<<s;set<<s;
       QString link=arrObj["link"].toString();
       livelist<<link;
       QString title=arrObj["title"].toString();
-      ui->listWidget->item(ii)->setToolTip(title+"\n打开"+s+"的直播间");
-      //QString sss=arrObj["face"].toString();
-      //m_reply=m.get(QNetworkRequest(sss));
-      //connect(m_reply,SIGNAL(readyRead()),this,SLOT(getURLImage()));
+      titlelist<<title;
+      QString sss=arrObj["face"].toString();
+      facelist<<sss;
     }
-        if(g_set!=set&&ui->checkBox->isChecked())
+        if(g_set!=set)
     {
+      ui->listWidget->clear();
+      ui->listWidget->setFont(list_font);
+      ui->listWidget->addItems(list);
+      for(int t=0;t<titlelist.count();t++)
+      {ui->listWidget->item(t)->setToolTip(titlelist.at(t)+"\n打开"+ui->listWidget->item(t)->text()+"的直播间");
+        //image=t;m_reply=m.get(QNetworkRequest(facelist.at(t)));
+       // connect(m_reply,SIGNAL(readyRead()),this,SLOT(getURLImage()));
+      }
+      if(ui->checkBox->isChecked()){
       QSet <QString> ons,offs;
       QStringList on,off;
       QString onnn,offf,zennbu;
@@ -156,10 +154,8 @@ void Widget::finishedSlot()
         offf+=off.join(",\n");offf+="下线了！";}
       zennbu=onnn+offf;
       QMessageBox::information(nullptr,"提示",zennbu);
-
+      }
     }
-
-
   }
         else
   {
@@ -168,7 +164,6 @@ void Widget::finishedSlot()
     ui->textEdit->insertPlainText(t+"「あなたに逢えなくなって、錆びた時計と泣いたけど…」\n");
     ui->lcdNumber->display("error");
   }
-
 }
 void Widget::getURLImage()
 {
@@ -180,9 +175,8 @@ connect(m_reply, &QNetworkReply::finished, [=]{
         pixmap = pixmap.scaled(100, 100, Qt::KeepAspectRatio, Qt::SmoothTransformation);
         }
         qDebug()<<pixmap;
-        ui->listWidget->item(ii-1)->setIcon(QIcon(pixmap));
+        ui->listWidget->item(ii)->setIcon(QIcon(pixmap));
   });
-
 }
 void Widget::on_listWidget_itemDoubleClicked()
 {
@@ -203,7 +197,7 @@ void Widget::dealClose()
 
 Widget::~Widget()
 {
-      delete m_reply;
+  delete m_reply;
   delete ui;
 }
 
