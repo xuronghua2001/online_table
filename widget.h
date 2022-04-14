@@ -17,9 +17,7 @@ QT_END_NAMESPACE
   Widget(QWidget *parent = nullptr);
   void dealSignal();//处理子线程响应函数，
   void fff();
-  void elle(QNetworkRequest,QVariant var);
-  void dealClose();
- //   void dealClose();//关闭线程响应
+  void dealClose();//关闭线程响应
   ~Widget();
   signals:
   void startThread();
@@ -28,7 +26,9 @@ QT_END_NAMESPACE
   void finishedSlot();
   void getURLImage();
   void readFile(QString path);
-  //  void fen();
+  void kuai();
+signals:
+  void fen();
 private:
   Ui::Widget *ui;
   QNetworkReply *m_reply;
