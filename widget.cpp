@@ -1,6 +1,6 @@
 #include "widget.h"
 #include "ui_widget.h"
-#include <QCoreApplication>
+#include <QApplication>
 #include <QTimer>
 #include <QNetworkAccessManager>
 #include <QNetworkReply>
@@ -8,16 +8,20 @@
 #include <QMessageBox>
 #include <QDesktopServices>
 #include <QDebug>
-#include <QVector>
 #include <QString>
 #include <QFile>
 #include <QJsonDocument>
 #include <QFont>
 #include <QDateTime>
 #include <QMessageBox>
+#include <QImageReader>
+#include <QSize>
 QNetworkAccessManager m;
-QStringList livelist;
+QStringList livelist,facelist;
+QByteArrayList arr;
 static int ii;
+static int shenmeshenme=0;
+static int xiaoshao=1;
 QString key;
 QSet <QString> g_set;
 Widget::Widget(QWidget *parent)
@@ -34,6 +38,7 @@ Widget::Widget(QWidget *parent)
   connect(myT, &MyThread::mySignal, this, &Widget::dealSignal);
   connect(this, &Widget::startThread,myT, &MyThread::myTimeout);
   connect(this,&Widget::destroyed, this, &Widget::dealClose);
+  connect(this,&Widget::fen,this,&Widget::kuai);
   fff();
 }
 void Widget::readFile(QString path)
@@ -62,16 +67,12 @@ void Widget::readFile(QString path)
   {
     QString msg = "<a>程序目录下的list.txt为空<br>编辑第一行SESSDATA值，//后可以备注\n<br><a href='https://api.vc.bilibili.com/dynamic_svr/v1/dynamic_svr/w_live_users?size=100'>打开接口</a>F12找到cookie中SESSDATA的值复制到list.txt" ;
     QMessageBox::information(nullptr,"提示",msg);
-    exit(0);}
-
+    exit(0);
+  }
 }
 void Widget::fff()
 {thread->start();
   emit startThread();
-}
-void Widget::elle(QNetworkRequest req,QVariant var)
-{
-  req.setHeader(QNetworkRequest::CookieHeader,var);
 }
 void Widget::dealSignal()
 {
@@ -88,15 +89,22 @@ void Widget::dealSignal()
   m_reply=m.get(req);
   connect(m_reply,SIGNAL(finished()),this,SLOT(finishedSlot()));
 }
+void Widget::kuai()
+{
+  {m_reply=m.get(QNetworkRequest(QUrl(facelist.at(shenmeshenme))));
+    connect(m_reply,SIGNAL(readyRead()),this,SLOT(getURLImage()));}
+}
 void Widget::finishedSlot()
 {
   QByteArray bytes=nullptr;
   bytes.resize(10000);
-  while(!m_reply->atEnd())
+  //while(!m_reply->atEnd())
+  while(m_reply->bytesAvailable()>10)
     bytes += m_reply->readAll();
+  //qDebug()<<bytes;
   QString string=nullptr;
   string =QString::fromUtf8(bytes,bytes.size());
-  int i =string.indexOf('{');
+  int i =string.indexOf("{\"c");
   string = string.mid(i,-1);
   QJsonObject json;
   QJsonParseError e;
@@ -117,7 +125,7 @@ void Widget::finishedSlot()
     QString t=current_time.toString();
     ui->textEdit->setText(t+"  请求正常");
     QSet <QString> set;
-    QStringList list,titlelist,facelist;
+    QStringList list,titlelist,facelist_t;
     ui->label->setText("在线人数："+QString::number(value2.toDouble()));livelist.clear();
         for(ii=0;ii<ja.count();ii++){
       QJsonObject arrObj= ja[ii].toObject();
@@ -128,18 +136,24 @@ void Widget::finishedSlot()
       QString title=arrObj["title"].toString();
       titlelist<<title;
       QString sss=arrObj["face"].toString();
-      facelist<<sss;
+      facelist_t<<sss;
+    }
+        facelist=facelist_t;
+    if(xiaoshao)
+    {
+       m_reply=m.get(QNetworkRequest(QUrl(facelist.at(shenmeshenme))));
+       connect(m_reply,SIGNAL(readyRead()),this,SLOT(getURLImage()));
     }
         if(g_set!=set)
     {
+      if(m_reply->isRunning())
+      m_reply->abort();
+      xiaoshao=1;shenmeshenme=0;
       ui->listWidget->clear();
       ui->listWidget->setFont(list_font);
       ui->listWidget->addItems(list);
       for(int t=0;t<titlelist.count();t++)
-      {ui->listWidget->item(t)->setToolTip(titlelist.at(t)+"\n打开"+ui->listWidget->item(t)->text()+"的直播间");
-        //image=t;m_reply=m.get(QNetworkRequest(facelist.at(t)));
-       // connect(m_reply,SIGNAL(readyRead()),this,SLOT(getURLImage()));
-      }
+        ui->listWidget->item(t)->setToolTip(titlelist.at(t)+"\n打开"+ui->listWidget->item(t)->text()+"的直播间");
       if(ui->checkBox->isChecked()){
       QSet <QString> ons,offs;
       QStringList on,off;
@@ -167,16 +181,29 @@ void Widget::finishedSlot()
 }
 void Widget::getURLImage()
 {
-  ui->listWidget->setIconSize(QSize(30,30));
+  if(xiaoshao){
+  m_reply->attribute(QNetworkRequest::HttpStatusCodeAttribute);
+  m_reply->attribute(QNetworkRequest::RedirectionTargetAttribute);
+  ui->listWidget->setIconSize(QSize(50,50));
 connect(m_reply, &QNetworkReply::finished, [=]{
-      //qDebug()<<"tu";
+      //qDebug()<<shenmeshenme;
     QPixmap pixmap;
+      QImageReader ir;
         if(pixmap.loadFromData(m_reply->readAll())){
-        pixmap = pixmap.scaled(100, 100, Qt::KeepAspectRatio, Qt::SmoothTransformation);
+        pixmap = pixmap.scaled(500, 500, Qt::KeepAspectRatio, Qt::SmoothTransformation);
+        pixmap.save(QString::number(shenmeshenme)+".jpg",nullptr,-1);
+        QSize qs;qs.scale(500,500,Qt::KeepAspectRatio);
+        ir.setFileName(QString::number(shenmeshenme)+".jpg");ir.setScaledSize(qs);
+        ui->listWidget->item(shenmeshenme)->setIcon(QPixmap::fromImageReader(&ir));
+        if(shenmeshenme<(ui->listWidget->count()-1))
+        {shenmeshenme++;
+          emit fen();}
+        else
+        {shenmeshenme=0;
+          xiaoshao=0;
         }
-        qDebug()<<pixmap;
-        ui->listWidget->item(ii)->setIcon(QIcon(pixmap));
-  });
+        }
+  });}
 }
 void Widget::on_listWidget_itemDoubleClicked()
 {
@@ -192,12 +219,12 @@ void Widget::dealClose()
   thread->quit();
   thread->wait();//将等待线程完成本次响应操作后终止
   delete myT;
-  //delete m_reply;
+  delete m_reply;
     }
 
 Widget::~Widget()
 {
-  delete m_reply;
+  //delete m_reply;
   delete ui;
 }
 
