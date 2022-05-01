@@ -10,9 +10,9 @@ void MyThread::myTimeout()
 {//qDebug()<<"开启多线程";
   while(isStop == false)
   {
-    id++;
+    //id++;
     emit mySignal();//每3秒发送一次信号
-    QThread::sleep(3);//强制暂停3秒，使得每三秒产生一次信号，
+    QThread::sleep(kkk);//强制暂停3秒，使得每三秒产生一次信号，
     //qDebug()<<"子线程号"<<QThread::currentThread();
   }
 }
