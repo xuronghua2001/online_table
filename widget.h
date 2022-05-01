@@ -23,16 +23,26 @@ QT_END_NAMESPACE
   void startThread();
   private slots:
   void on_listWidget_itemDoubleClicked();
-  void finishedSlot();
-  void getURLImage();
+  void on_listWidget_itemClicked();
+  void finishedSlot(QNetworkReply* r);
+  void getURLImage(QNetworkReply *);
+  void getmedal();
   void readFile(QString path);
   void kuai();
+  void on_spinBox_valueChanged(int arg1);
+  void updateDataReadProgress(qint64,qint64);
+  void shuchu(QNetworkReply *r);
+  void sav(QNetworkReply* reply);
+  void wear(QByteArray arr);
 signals:
   void fen();
 private:
   Ui::Widget *ui;
   QNetworkReply *m_reply;
+  QNetworkAccessManager *m;
+  QNetworkAccessManager *imi;
   MyThread *myT;
   QThread *thread;
+  QNetworkAccessManager *manager;
 };
 #endif // WIDGET_H
