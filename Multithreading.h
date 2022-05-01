@@ -6,6 +6,7 @@ class MyThread : public QObject
   Q_OBJECT
       public:
                int id=0;
+        int kkk=5;
   explicit MyThread(QObject *parent = nullptr);
 
   void setFlag(bool flag = true);
