@@ -23,11 +23,11 @@ QStringList livelist,key;
 QList<QUrl> facelist;
 QByteArrayList arr;
 static int shenmeshenme=0;
-static int fight=1;
+static int fight=1,tot;
 QByteArray bytes;
 QSet <QString> g_set,o,f;
 Widget::Widget(QWidget *parent)
-    : QWidget(parent)
+    : QWidget(parent,Qt::Widget| Qt::WindowStaysOnTopHint)
       , ui(new Ui::Widget)
 {
   ui->setupUi(this);
@@ -47,7 +47,7 @@ Widget::Widget(QWidget *parent)
   connect(myT, &MyThread::mySignal, this, &Widget::dealSignal);
   connect(this, &Widget::startThread,myT, &MyThread::myTimeout);
   connect(this,&Widget::destroyed, this, &Widget::dealClose);
-  fff();
+  getmedal();fff();
 }
 void Widget::readFile(QString path)
 {
@@ -166,38 +166,45 @@ QByteArray bytes = r->readAll();
 void Widget::getmedal()
 {
   if(fight)
-  {
+  {qDebug()<<fight;
     QNetworkReply *reply;
     QNetworkRequest reqg;
     QList<QNetworkCookie> cookies;
     cookies.append(QNetworkCookie("SESSDATA",key.at(0).toLatin1()));
     cookies.append(QNetworkCookie("bili_jct",key.at(1).toLatin1()));
-    reqg.setUrl(QUrl("https://api.live.bilibili.com/fans_medal/v1/FansMedal/get_list_in_room"));
+    //reqg.setUrl(QUrl("https://api.live.bilibili.com/fans_medal/v1/FansMedal/get_list_in_room"));
+    reqg.setUrl(QUrl("https://api.live.bilibili.com/fans_medal/v2/HighQps/received_medals?page="+QString::number(fight)));
     QNetworkCookieJar *jar = new QNetworkCookieJar();
-    jar->setCookiesFromUrl(cookies, QUrl("https://api.live.bilibili.com/fans_medal/v1/FansMedal/get_list_in_room"));
+    //jar->setCookiesFromUrl(cookies, QUrl("https://api.live.bilibili.com/fans_medal/v1/FansMedal/get_list_in_room"));
+    jar->setCookiesFromUrl(cookies, QUrl("https://api.live.bilibili.com/fans_medal/v2/HighQps/received_medals?page="+QString::number(fight)));
     m->setCookieJar(jar);
     reply=m->get(reqg);
   }
-  fight=0;
+
+ // fight=0;
 }
 void Widget::sav(QNetworkReply* reply)
 {
   QVariant statusCode = reply->attribute(QNetworkRequest::HttpStatusCodeAttribute);
   if(statusCode.isValid())
   {
-    m->disconnect(m, SIGNAL(finished(QNetworkReply*)),this, SLOT(sav(QNetworkReply*)));
+    //m->disconnect(m, SIGNAL(finished(QNetworkReply*)),this, SLOT(sav(QNetworkReply*)));
     qDebug() << "save status code=" << statusCode;
   }
   QString string=nullptr;
   QByteArray b=reply->readAll();
   string =QString::fromUtf8(b,b.size());//bytes.clear();
   //qDebug()<<string;
-  QJsonObject json;
   QJsonParseError e;
   QJsonDocument d = QJsonDocument::fromJson(string.toStdString().data(),&e);
   if(e.error==0){
   QJsonObject obj=d.object();
-  QJsonValue value2 = obj.value("data");
+  QJsonValue value1=obj.value("data");
+  QJsonObject obj2=value1.toObject();
+  //QJsonValue value2 = obj.value("data");
+  QJsonValue value2 = obj2.value("list");
+  QJsonValue value3 = obj2.value("total_page");
+  tot=value3.toInt();
   QJsonArray ja=value2.toArray();
   for(int ii=0;ii<ja.count();ii++){
     QJsonObject arrObj= ja[ii].toObject();
@@ -205,11 +212,17 @@ void Widget::sav(QNetworkReply* reply)
     QString medal_id=QString::number(arrObj["medal_id"].toInt());
     //qDebug()<<medal_id;
     hash.insert(s,medal_id);
-  }//m->disconnect(m, SIGNAL(finished(QNetworkReply*)),this, SLOT(sav(QNetworkReply*)));
+  }
+  if(fight<tot)
+  {fight++;qDebug()<<fight;getmedal();}
+  else
+  {fight=0;qDebug()<<hash;
+  m->disconnect(m, SIGNAL(finished(QNetworkReply*)),this, SLOT(sav(QNetworkReply*)));
+  }
   }
  // else
       //fight=1;
-  qDebug()<<hash;
+  qDebug()<<hash.count();
 }
 void Widget::wear(QByteArray arr)
 {
@@ -220,15 +233,6 @@ void Widget::wear(QByteArray arr)
   allcookies.append(QNetworkCookie("SESSDATA",key.at(0).toLatin1()));
   var.setValue(allcookies);
   req.setHeader(QNetworkRequest::CookieHeader,var);
-/*
-   QJsonObject json;
-   json.insert("medal_id",2211);
-   json.insert("csrf_token","db414ded070eb949e471f7e1eab60244");
-  json.insert("csrf","db414ded070eb949e471f7e1eab60244");
-   json.insert("visit_id","");
-   QJsonDocument document=QJsonDocument(json);
-   QByteArray dataArray = document.toJson(QJsonDocument::Compact);
-*/
   QNetworkCookieJar *jar = new QNetworkCookieJar();
   jar->setCookiesFromUrl(allcookies, QUrl("https://api.live.bilibili.com/xlive/web-room/v1/fansMedal/wear"));
   m->setCookieJar(jar);
@@ -246,12 +250,11 @@ void Widget::finishedSlot(QNetworkReply* r)
   if(r->error()==0)
   bytes = r->readAll();
   r->deleteLater();
-  getmedal();
+  //getmedal();
   QString string=nullptr;
   string =QString::fromUtf8(bytes,bytes.size());bytes.clear();
   int i =string.indexOf("{\"c");
   string = string.mid(i,-1);
-  QJsonObject json;
   QJsonParseError e;
   QJsonDocument d = QJsonDocument::fromJson(string.toStdString().data(),&e);
   if(e.error==0)
@@ -322,7 +325,12 @@ void Widget::finishedSlot(QNetworkReply* r)
       qDebug()<<(c_time.secsTo(current_time)>10)<<((f.isEmpty()&&!o.isEmpty())&&(o!=offs)&&(f!=ons));
       if(c_time.secsTo(current_time)>10||((f.isEmpty()&&!o.isEmpty())&&(o!=offs)&&(f!=ons)))
       {o=ons;f=offs;c_time=QTime::currentTime();
-        QMessageBox::information(nullptr,"提示",zennbu);}
+        //QMessageBox::information(nullptr,"提示",zennbu);
+        QMessageBox messageBox(QMessageBox::Information,"提示",zennbu,
+                                   QMessageBox::Ok, NULL);
+        messageBox.setWindowFlag(Qt::WindowStaysOnTopHint);
+        messageBox.exec();
+      }
       else
       {o=ons;f=offs;c_time=QTime::currentTime();}
       }
@@ -363,7 +371,12 @@ void Widget::getURLImage(QNetworkReply *r)
         shenmeshenme=0;
     }
       else
-      shenmeshenme=0;
+      {
+        if(shenmeshenme<(livelist.count()-1))
+      {shenmeshenme++;kuai();}
+       else
+          shenmeshenme=0;
+    }
 }
 void Widget::on_listWidget_itemClicked()
 {
