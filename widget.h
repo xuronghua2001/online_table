@@ -34,6 +34,7 @@ QT_END_NAMESPACE
   void shuchu(QNetworkReply *r);
   void sav(QNetworkReply* reply);
   void wear(QByteArray arr);
+  void unwear();
 signals:
   void fen();
 private:
