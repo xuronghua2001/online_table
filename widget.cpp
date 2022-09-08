@@ -262,10 +262,7 @@ void Widget::finishedSlot(QNetworkReply* r)
   QByteArray bytes;
   if(r->error()==0)
   bytes = r->readAll();
-
   r->deleteLater();
-  if(fight!=0)
-  getmedal();
   QString string=nullptr;
   string =QString::fromUtf8(bytes,bytes.size());
   int i =string.indexOf("{\"c");
@@ -311,8 +308,6 @@ void Widget::finishedSlot(QNetworkReply* r)
       facelist_t<<sss;
       url_dic.insert(sss,s);
     }
-//    }
-        //if(!facelist_t.isEmpty())
       facelist=facelist_t;
     if(g_set!=set)
       {QTime current_time =QTime::currentTime();
