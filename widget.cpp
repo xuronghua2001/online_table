@@ -24,7 +24,7 @@ QStringList livelist,key;
 QList<QUrl> facelist;
 QByteArrayList arr;
 static int shenmeshenme=0;
-static int fight=1,tot,val=0;
+static int fight=1,tot=0,val=0;
 QByteArray bytes;
 QSet <QString> g_set,o,f;
 Widget::Widget(QWidget *parent)
@@ -49,7 +49,7 @@ Widget::Widget(QWidget *parent)
   connect(this, &Widget::startThread,myT, &MyThread::myTimeout);
   connect(this,&Widget::destroyed, this, &Widget::dealClose);
   connect(imi, SIGNAL(finished(QNetworkReply *)),this, SLOT(getURLImage(QNetworkReply *)));
-  getmedal();fff();
+  fff();
   QList<QNetworkCookie> allcookies;
   allcookies.append(QNetworkCookie("SESSDATA",key.at(0).toLatin1()));
   QNetworkCookieJar *jar = new QNetworkCookieJar();
@@ -158,7 +158,8 @@ void Widget::shuchu(QNetworkReply *r)
 }
 void Widget::getmedal()
 {
-  if(fight!=0)
+  tot = -1;
+  if(fight>0)
   {
 //    qDebug()<<fight;
     QNetworkReply *reply;
@@ -173,10 +174,18 @@ void Widget::getmedal()
     jar->setCookiesFromUrl(cookies, QUrl("https://api.live.bilibili.com/fans_medal/v2/HighQps/received_medals?page="+QString::number(fight)));
     m->setCookieJar(jar);
     reply=m->get(reqg);
+
   }
 }
 void Widget::sav(QNetworkReply* reply)
 {
+  if (reply->error()!=QNetworkReply::NoError)
+  {
+    tot=0;
+    qDebug()<<reply->error();
+  }
+  else
+  {
   QVariant statusCode = reply->attribute(QNetworkRequest::HttpStatusCodeAttribute);
   if(statusCode.isValid())
   {
@@ -205,15 +214,18 @@ void Widget::sav(QNetworkReply* reply)
     //qDebug()<<medal_id;
     hash.insert(s,medal_id);
     }
-  if(fight<tot)
-    {fight++;qDebug()<<fight;getmedal();}
-  else
-    {
-    fight=0;qDebug()<<hash;
-    m->disconnect(m, SIGNAL(finished(QNetworkReply*)),this, SLOT(sav(QNetworkReply*)));
-    }
-  }
+
+    if(fight<tot)
+      {fight++;qDebug()<<fight;getmedal();}
+    else if(fight>=tot && tot>0)
+      {
+       qDebug()<<hash;
+      m->disconnect(m, SIGNAL(finished(QNetworkReply*)),this, SLOT(sav(QNetworkReply*)));
+      }
+     }
   qDebug()<<hash.count();
+  }
+  reply->deleteLater();
 }
 void Widget::wear(QByteArray arr)
 {
@@ -262,6 +274,8 @@ void Widget::finishedSlot(QNetworkReply* r)
   QByteArray bytes;
   if(r->error()==0)
   bytes = r->readAll();
+  if (tot==0)
+  getmedal();
   r->deleteLater();
   QString string=nullptr;
   string =QString::fromUtf8(bytes,bytes.size());
@@ -407,12 +421,24 @@ void Widget::on_listWidget_itemDoubleClicked()
   while (i != hash.end()&&i.key()==ui->listWidget->item(ui->listWidget->currentRow())->text()) {
     s=i.value();
     ++i;}
-  //qDebug()<<s;
-  if(s!=nullptr)
-  {QByteArray arr=s.toLatin1();
-    wear(arr);}
+//  qDebug()<<key.at(1);
+  if (key.at(1)!=nullptr)
+    if(s!=nullptr)
+    {
+      QByteArray arr=s.toLatin1();
+      wear(arr);
+    }
+    else
+      unwear();
   else
-    unwear();
+    {
+    if(s!=nullptr)
+    {
+      QTime current_time =QTime::currentTime();
+      QString t=current_time.toString();
+      ui->textEdit->insertPlainText(t+"   缺少bili_jct无法自动佩戴粉丝勋章\n");
+    }
+    }
 }
 void Widget::dealClose()
 {
