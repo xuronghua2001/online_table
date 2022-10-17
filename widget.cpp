@@ -451,6 +451,32 @@ void Widget::dealClose()
   thread->wait();//将等待线程完成本次响应操作后终止
   delete myT;
 }
+
+void Widget::enterEvent(QEnterEvent *)
+{
+  if(geometry().y()<0){
+    animation = new QPropertyAnimation(this,"pos");
+    animation->setTargetObject(this);
+    animation->setStartValue(QPoint(geometry().x(),geometry().y()));
+    animation->setEndValue(QPoint(geometry().x(),0));
+    animation->setDuration(100);
+    animation->start();}
+}
+
+
+void Widget::leaveEvent(QEvent *)
+{
+
+  if(geometry().y()==30 && QCursor().pos().y()>30){
+  animation = new QPropertyAnimation(this,"pos");
+  animation->setTargetObject(this);
+  animation->setStartValue(QPoint(geometry().x(),0));
+  animation->setEndValue(QPoint(geometry().x(),-(geometry().y()+geometry().height())+4));
+  animation->setDuration(100);
+  animation->start();}
+}
+
+
 Widget::~Widget()
 {
   delete ui;
