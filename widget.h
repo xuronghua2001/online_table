@@ -37,6 +37,11 @@ QT_END_NAMESPACE
   void unwear();
 signals:
   void fen();
+
+protected:
+  void enterEvent(QEnterEvent *);
+  void leaveEvent(QEvent *);
+
 private:
   Ui::Widget *ui;
   QNetworkReply *m_reply;
@@ -45,5 +50,6 @@ private:
   MyThread *myT;
   QThread *thread;
   QNetworkAccessManager *manager;
+  QPropertyAnimation *animation;
 };
 #endif // WIDGET_H
