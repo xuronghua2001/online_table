@@ -239,7 +239,7 @@ void Widget::wear(QByteArray arr)
   QNetworkCookieJar *jar = new QNetworkCookieJar();
   jar->setCookiesFromUrl(allcookies, QUrl("https://api.live.bilibili.com/xlive/web-room/v1/fansMedal/wear"));
   m->setCookieJar(jar);
-  QByteArray dataArray="medal_id="+arr+"&csrf_token="+key.at(1).toLatin1()+"&csrf="+key.at(1).toLatin1()+"&visit_id="+key.at(2).toLatin1();
+  QByteArray dataArray="medal_id="+arr+"&csrf_token="+key.at(1).toLatin1()+"&csrf="+key.at(1).toLatin1();
   int contentLength=dataArray.size();
   req.setUrl(QUrl("https://api.live.bilibili.com/xlive/web-room/v1/fansMedal/wear"));
   req.setHeader(QNetworkRequest::ContentTypeHeader,QVariant("application/x-www-form-urlencoded"));
