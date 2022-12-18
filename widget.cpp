@@ -9,7 +9,6 @@
 #include <QDesktopServices>
 #include <QDebug>
 #include <QString>
-#include <QFile>
 #include <QJsonDocument>
 #include <QFont>
 #include <QDateTime>
@@ -20,7 +19,8 @@ QTime c_time ;
 QHash<QString, QString> hash;
 QHash<QUrl, QString> url_dic;
 QHash<QString,QImage> ima;
-QStringList livelist,key;
+QHash<QByteArray,QByteArray>nv;
+QStringList livelist;
 QList<QUrl> facelist;
 QByteArrayList arr;
 static int shenmeshenme=0;
@@ -32,10 +32,6 @@ Widget::Widget(QWidget *parent)
       , ui(new Ui::Widget)
 {
   ui->setupUi(this);
-  QString path = QCoreApplication::applicationDirPath();
-  path+="/list.txt";
-  readFile(path);
-
   myT = new MyThread;
   thread = new QThread(this);
   myT->moveToThread(thread);
@@ -50,40 +46,19 @@ Widget::Widget(QWidget *parent)
   connect(this,&Widget::destroyed, this, &Widget::dealClose);
   connect(imi, SIGNAL(finished(QNetworkReply *)),this, SLOT(getURLImage(QNetworkReply *)));
   fff();
+
+  himitsu("bilibili.com",&nv);
+//  qDebug()<<nv;
   QList<QNetworkCookie> allcookies;
-  allcookies.append(QNetworkCookie("SESSDATA",key.at(0).toLatin1()));
+  QHash<QByteArray, QByteArray>::iterator i = nv.begin();
+  while (i != nv.end()) {
+      allcookies.append(QNetworkCookie(i.key(),i.value()));
+    ++i;
+    }
   QNetworkCookieJar *jar = new QNetworkCookieJar();
-  jar->setCookiesFromUrl(allcookies, QUrl("https://api.vc.bilibili.com/dynamic_svr/v1/dynamic_svr/w_live_users?size=1000"));
+  jar->setCookiesFromUrl(allcookies, QUrl("https://api.vc.bilibili.com/dynamic_svr/v1/dynamic_svr/w_live_users?size=100"));
+  jar->setCookiesFromUrl(allcookies, QUrl("https://api.bilibili.com/x/polymer/web-dynamic/v1/portal"));
   manager->setCookieJar(jar);
-}
-void Widget::readFile(QString path)
-{
-  QFile file(path);
-  if(!file.open(QIODevice::ReadOnly | QIODevice::Text))
-  {
-    QMessageBox::warning(nullptr,"提示","没有找到list.txt\n请检查文件后重新打开！");
-  }
-  QTextStream read(&file);
-  while (!read.atEnd())
-  {
-    QString line = read.readLine();
-    if (line.isEmpty())
-      break;
-    if (line.indexOf("//")==0)
-      continue;
-    else{
-      if(line.lastIndexOf("//"))
-      {int i=line.lastIndexOf("/");
-        line=line.mid(0,i-1);}
-      key<<line;}
-  }
-  file.close();
-  if (key.isEmpty())
-  {
-    QString msg = "<a>程序目录下的list.txt为空<br>编辑第一行SESSDATA值，第二行bili_jct值//后可以备注\n<br><a href='https://api.vc.bilibili.com/dynamic_svr/v1/dynamic_svr/w_live_users?size=100'>打开接口</a>F12找到cookie中SESSDATA的值复制到list.txt" ;
-    QMessageBox::information(nullptr,"提示",msg);
-    exit(0);
-  }
 }
 
 void Widget::fff()
@@ -94,9 +69,8 @@ void Widget::fff()
 void Widget::dealSignal()
 {
   QNetworkRequest req;
-  QList<QNetworkCookie> allcookies;
-  allcookies.append(QNetworkCookie("SESSDATA",key.at(0).toLatin1()));
-  req.setUrl(QUrl("https://api.vc.bilibili.com/dynamic_svr/v1/dynamic_svr/w_live_users?size=1000"));
+  req.setRawHeader("User-Agent","Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:106.0) Gecko/20100101 Firefox/106.0");
+  req.setUrl(QUrl("https://api.vc.bilibili.com/dynamic_svr/v1/dynamic_svr/w_live_users?size=100"));
   m_reply=manager->get(req);
 }
 void Widget::updateDataReadProgress(qint64 r,qint64 t)
@@ -165,8 +139,8 @@ void Widget::getmedal()
     QNetworkReply *reply;
     QNetworkRequest reqg;
     QList<QNetworkCookie> cookies;
-    cookies.append(QNetworkCookie("SESSDATA",key.at(0).toLatin1()));
-    cookies.append(QNetworkCookie("bili_jct",key.at(1).toLatin1()));
+    cookies.append(QNetworkCookie("SESSDATA",nv.find("SESSDATA").value()));
+    cookies.append(QNetworkCookie("bili_jct",nv.find("bili_jct").value()));
     //reqg.setUrl(QUrl("https://api.live.bilibili.com/fans_medal/v1/FansMedal/get_list_in_room"));
     reqg.setUrl(QUrl("https://api.live.bilibili.com/fans_medal/v2/HighQps/received_medals?page="+QString::number(fight)));
     QNetworkCookieJar *jar = new QNetworkCookieJar();
@@ -174,7 +148,6 @@ void Widget::getmedal()
     jar->setCookiesFromUrl(cookies, QUrl("https://api.live.bilibili.com/fans_medal/v2/HighQps/received_medals?page="+QString::number(fight)));
     m->setCookieJar(jar);
     reply=m->get(reqg);
-
   }
 }
 void Widget::sav(QNetworkReply* reply)
@@ -214,7 +187,6 @@ void Widget::sav(QNetworkReply* reply)
     //qDebug()<<medal_id;
     hash.insert(s,medal_id);
     }
-
     if(fight<tot)
       {fight++;qDebug()<<fight;getmedal();}
     else if(fight>=tot && tot>0)
@@ -232,14 +204,12 @@ void Widget::wear(QByteArray arr)
   QNetworkReply *r;
   QNetworkRequest req;
   QList<QNetworkCookie> allcookies;
-  QVariant var;
-  allcookies.append(QNetworkCookie("SESSDATA",key.at(0).toLatin1()));
-  var.setValue(allcookies);
-  req.setHeader(QNetworkRequest::CookieHeader,var);
+  allcookies.append(QNetworkCookie("SESSDATA",nv.find("SESSDATA").value()));
+  allcookies.append(QNetworkCookie("bili_jct",nv.find("bili_jct").value()));
   QNetworkCookieJar *jar = new QNetworkCookieJar();
   jar->setCookiesFromUrl(allcookies, QUrl("https://api.live.bilibili.com/xlive/web-room/v1/fansMedal/wear"));
   m->setCookieJar(jar);
-  QByteArray dataArray="medal_id="+arr+"&csrf_token="+key.at(1).toLatin1()+"&csrf="+key.at(1).toLatin1();
+  QByteArray dataArray="medal_id="+arr+"&csrf_token="+nv.find("bili_jct").value()+"&csrf="+nv.find("bili_jct").value();
   int contentLength=dataArray.size();
   req.setUrl(QUrl("https://api.live.bilibili.com/xlive/web-room/v1/fansMedal/wear"));
   req.setHeader(QNetworkRequest::ContentTypeHeader,QVariant("application/x-www-form-urlencoded"));
@@ -253,14 +223,11 @@ void Widget::unwear()
   QNetworkReply *r;
   QNetworkRequest req;
   QList<QNetworkCookie> allcookies;
-  QVariant var;
-  allcookies.append(QNetworkCookie("SESSDATA",key.at(0).toLatin1()));
-  var.setValue(allcookies);
-  req.setHeader(QNetworkRequest::CookieHeader,var);
+  allcookies.append(QNetworkCookie("SESSDATA",nv.find("SESSDATA").value()));
   QNetworkCookieJar *jar = new QNetworkCookieJar();
   jar->setCookiesFromUrl(allcookies, QUrl("https://api.live.bilibili.com/xlive/web-room/v1/fansMedal/take_off"));
   m->setCookieJar(jar);
-  QByteArray dataArray="csrf_token="+key.at(1).toLatin1()+"&csrf="+key.at(1).toLatin1();
+  QByteArray dataArray="csrf_token="+nv.find("bili_jct").value()+"&csrf="+nv.find("bili_jct").value();
   int contentLength=dataArray.size();
   req.setUrl(QUrl("https://api.live.bilibili.com/xlive/web-room/v1/fansMedal/take_off"));
   req.setHeader(QNetworkRequest::ContentTypeHeader,QVariant("application/x-www-form-urlencoded"));
@@ -288,7 +255,7 @@ void Widget::finishedSlot(QNetworkReply* r)
   {
     myT->id++;
     QJsonObject obj=d.object();
-    QJsonValue value = obj.value("data");  // 获取指定 key 对应的 value
+    QJsonValue value = obj.value("data");
     QJsonObject json2=value.toObject();
     QJsonValue value2 = json2.value("count");
     if(value2.toInt()==0)
@@ -421,8 +388,7 @@ void Widget::on_listWidget_itemDoubleClicked()
   while (i != hash.end()&&i.key()==ui->listWidget->item(ui->listWidget->currentRow())->text()) {
     s=i.value();
     ++i;}
-//  qDebug()<<key.at(1);
-  if (key.at(1)!=nullptr)
+  if (nv.count()>0)
     if(s!=nullptr)
     {
       QByteArray arr=s.toLatin1();
