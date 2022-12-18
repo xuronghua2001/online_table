@@ -1,5 +1,6 @@
 QT       += core gui
 QT       += network
+QT       += sql
 greaterThan(QT_MAJOR_VERSION, 4): QT += widgets
 RC_ICONS = image.ico
 CONFIG += c++17
@@ -11,15 +12,22 @@ macx: LIBS += -framework AppKit
 
 CONFIG +=  warn_on
 
+win32 {
+INCLUDEPATH += $$quote(C:/Program Files/OpenSSL-Win64/include)
+LIBS += -L$$quote(C:/Program Files/OpenSSL-Win64/lib) -llibcrypto
+}
+
 include($$PWD/3rdparty/qBreakpad/qBreakpad.pri)
 
 SOURCES += \
     Multithreading.cpp \
+    himitsu.cpp \
     main.cpp \
     widget.cpp
 
 HEADERS += \
     Multithreading.h \
+    himitsu.h \
     qbreakpadlib/QBreakpadHandler.h \
     qbreakpadlib/QBreakpadHttpUploader.h \
     qbreakpadlib/singletone/call_once.h \
