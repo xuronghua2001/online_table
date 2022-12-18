@@ -1,6 +1,7 @@
 #ifndef WIDGET_H
 #define WIDGET_H
 #include "Multithreading.h"
+#include "himitsu.h"
 #include <QWidget>
 #include <QListWidgetItem>
 #include <QThread>
@@ -27,7 +28,6 @@ QT_END_NAMESPACE
   void finishedSlot(QNetworkReply* r);
   void getURLImage(QNetworkReply *);
   void getmedal();
-  void readFile(QString path);
   void kuai();
   void on_spinBox_valueChanged(int arg1);
   void updateDataReadProgress(qint64,qint64);
