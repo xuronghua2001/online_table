@@ -46,7 +46,6 @@ QByteArray cry(QByteArray data,DATA_BLOB DataOut)
 
 int himitsu(QString url,QHash <QByteArray,QByteArray>*nv)
 {
-//    QCoreApplication a(argc, argv);
     QStringList path = QStandardPaths::standardLocations(QStandardPaths::AppConfigLocation);
     QString str = path[0];
     int i =str.indexOf("AppData");
