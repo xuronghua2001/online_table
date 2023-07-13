@@ -6,14 +6,15 @@ const char *propq = NULL;
 
 QByteArray cry(QByteArray data,DATA_BLOB DataOut)
 {
-    QByteArray byteArray1 = data.mid(3,12);
-    QByteArray byteArray2 = data.mid(15,-1);
+    QByteArray byteArray1 = data.mid(3,12);//失败 解决
+    QByteArray byteArray2 = data.mid(15,-1);//失败 解决
     QByteArray byteArray3,byteArray4;
     for (int i = 0;i<byteArray2.size();i++)
         if (i<byteArray2.size()-16)
             byteArray3.append(byteArray2.at(i));
         else
             byteArray4.append(byteArray2.at(i));
+    //qDebug()<<"gi:"<<byteArray1<<byteArray1.size()<<"gc:"<< byteArray3<<byteArray3.size()<<"gt:"<<byteArray4<<byteArray4.size();//不正确 修正
     const unsigned char *gcm_iv = reinterpret_cast<const unsigned char *>(byteArray1.constData());
     const unsigned char *gcm_ct = reinterpret_cast<const unsigned char *>(byteArray3.constData());
     const unsigned char *gcm_tag = reinterpret_cast<const unsigned char *>(byteArray4.constData());
@@ -46,6 +47,7 @@ QByteArray cry(QByteArray data,DATA_BLOB DataOut)
 
 int himitsu(QString url,QHash <QByteArray,QByteArray>*nv)
 {
+//    QCoreApplication a(argc, argv);
     QStringList path = QStandardPaths::standardLocations(QStandardPaths::AppConfigLocation);
     QString str = path[0];
     int i =str.indexOf("AppData");
@@ -56,6 +58,7 @@ int himitsu(QString url,QHash <QByteArray,QByteArray>*nv)
     if(!file.open(QIODevice::ReadOnly | QIODevice::Text))
     {
         qDebug()<<"error";
+        return 1;
     }
     QTextStream read(&file);
     QString Local_State;
@@ -83,9 +86,15 @@ int himitsu(QString url,QHash <QByteArray,QByteArray>*nv)
         DataIn.cbData = encrypted_key.size();
         CryptUnprotectData(&DataIn,&pDescrOut, NULL, NULL, NULL, flags,&DataOut);
     }
-    QSqlDatabase db = QSqlDatabase::addDatabase("QSQLITE");
-    db.setDatabaseName(cookies);
-    db.open();
+    QSqlDatabase db;
+//    qDebug()<<QSqlDatabase::connectionNames();
+    if (QSqlDatabase::contains("qt_sql_default_connection"))
+        db = QSqlDatabase::database("qt_sql_default_connection");
+    else
+        db = QSqlDatabase::addDatabase("QSQLITE");  //引入数据库的驱动字符串为SQLITE,相当于用这个来创建需要链接的数据库类型
+    db.setDatabaseName(cookies);              //设置数据库,创建一个数据库文件
+    if (!db.isOpen())
+        db.open();
     QString q = "SELECT name,encrypted_value FROM cookies where host_key like \'%." + url +"\'";
     QSqlQuery query(q,db);
     QByteArray data;
@@ -95,5 +104,8 @@ int himitsu(QString url,QHash <QByteArray,QByteArray>*nv)
         data = query.value(1).toByteArray();
         *nv->insert(query.value(0).toByteArray(),cry(data,DataOut));
     }
+    if (nv->count()<=0)
+        return 2;
+    db.close();
     return 0;
 }

@@ -6,6 +6,7 @@
 #include <QListWidgetItem>
 #include <QThread>
 #include <QtNetwork>
+#include <QHash>
 QT_BEGIN_NAMESPACE
     namespace Ui { class Widget; }
 QT_END_NAMESPACE
@@ -22,7 +23,9 @@ QT_END_NAMESPACE
   ~Widget();
   signals:
   void startThread();
+  void updateSignal();
   private slots:
+  void updateSlot();
   void on_listWidget_itemDoubleClicked();
   void on_listWidget_itemClicked();
   void finishedSlot(QNetworkReply* r);
@@ -44,12 +47,16 @@ protected:
 
 private:
   Ui::Widget *ui;
-  QNetworkReply *m_reply;
   QNetworkAccessManager *m;
   QNetworkAccessManager *imi;
   MyThread *myT;
   QThread *thread;
   QNetworkAccessManager *manager;
   QPropertyAnimation *animation;
+  QHash<QUrl, QString> url_dic;
+  QHash<QString, QString> title_hash;
+  QHash<QString, QString> link_hash;
+  QHash<QString, QUrl> face_hash;
+  QHash<QString, QPair<QTime, int>> dataHash;
 };
 #endif // WIDGET_H

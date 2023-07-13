@@ -13,8 +13,10 @@ class MyThread : public QObject
 signals:
 
   void mySignal();
+public slots:
 
-public slots:  void myTimeout();
+
+  void myTimeout();
 private:
   bool isStop;
 };

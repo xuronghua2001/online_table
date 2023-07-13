@@ -14,19 +14,14 @@
 #include <QDateTime>
 #include <QMessageBox>
 #include <QSize>
-#include <QHash>
-QTime c_time ;
 QHash<QString, QString> hash;
-QHash<QUrl, QString> url_dic;
 QHash<QString,QImage> ima;
 QHash<QByteArray,QByteArray>nv;
-QStringList livelist;
-QList<QUrl> facelist;
-QByteArrayList arr;
 static int shenmeshenme=0;
 static int fight=1,tot=0,val=0;
 QByteArray bytes;
-QSet <QString> g_set,o,f;
+QStringList g_list;
+QSet <QString> g_set;
 Widget::Widget(QWidget *parent)
     : QWidget(parent,Qt::Widget| Qt::WindowStaysOnTopHint)
       , ui(new Ui::Widget)
@@ -42,12 +37,23 @@ Widget::Widget(QWidget *parent)
   connect(manager, SIGNAL(finished(QNetworkReply*)),this, SLOT(finishedSlot(QNetworkReply*)));
 //  connect(imi, SIGNAL(finished(QNetworkReply *)),this, SLOT(getURLImage(QNetworkReply *)));
   connect(myT, &MyThread::mySignal, this, &Widget::dealSignal);
+  connect(this, &Widget::updateSignal, this, &Widget::updateSlot);
   connect(this, &Widget::startThread,myT, &MyThread::myTimeout);
-  connect(this,&Widget::destroyed, this, &Widget::dealClose);
-  connect(imi, SIGNAL(finished(QNetworkReply *)),this, SLOT(getURLImage(QNetworkReply *)));
-  fff();
+  connect(imi, SIGNAL(finished(QNetworkReply*)),this, SLOT(getURLImage(QNetworkReply*)));
 
-  himitsu("bilibili.com",&nv);
+
+  if(himitsu("bilibili.com",&nv))
+  {
+    QString msg = "请使用Edge浏览器<a href='https://www.bilibili.com/'>登录bilibili\n</a>" ;
+    QMessageBox::information(nullptr,"提示",msg);
+    exit(0);
+  }
+
+  QFont list_font;
+  list_font.setPointSize(20);
+  ui->label->setFont(list_font);
+  ui->listWidget->setFont(list_font);
+  fff();
 //  qDebug()<<nv;
   QList<QNetworkCookie> allcookies;
   QHash<QByteArray, QByteArray>::iterator i = nv.begin();
@@ -59,6 +65,9 @@ Widget::Widget(QWidget *parent)
   jar->setCookiesFromUrl(allcookies, QUrl("https://api.vc.bilibili.com/dynamic_svr/v1/dynamic_svr/w_live_users?size=100"));
   jar->setCookiesFromUrl(allcookies, QUrl("https://api.bilibili.com/x/polymer/web-dynamic/v1/portal"));
   manager->setCookieJar(jar);
+
+
+
 }
 
 void Widget::fff()
@@ -66,12 +75,25 @@ void Widget::fff()
   thread->start();
   emit startThread();
 }
+
+void Widget::updateSlot()
+
+{
+  ui->listWidget->clear();
+  ui->listWidget->addItems(g_list);
+  for(int t=0;t<g_list.size();t++)
+    ui->listWidget->item(t)->setToolTip(title_hash[ui->listWidget->item(t)->text()]+"\n打开"+ui->listWidget->item(t)->text()+"的直播间");
+  kuai();
+
+}
+
 void Widget::dealSignal()
 {
   QNetworkRequest req;
+  req.setAttribute(QNetworkRequest::RedirectPolicyAttribute, QNetworkRequest::ManualRedirectPolicy);
   req.setRawHeader("User-Agent","Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:106.0) Gecko/20100101 Firefox/106.0");
   req.setUrl(QUrl("https://api.vc.bilibili.com/dynamic_svr/v1/dynamic_svr/w_live_users?size=100"));
-  m_reply=manager->get(req);
+  manager->get(req);
 }
 void Widget::updateDataReadProgress(qint64 r,qint64 t)
 {
@@ -85,7 +107,7 @@ void Widget::updateDataReadProgress(qint64 r,qint64 t)
 
 void Widget::kuai()
 {
-  for (int i = 0;i<facelist.count();i++)
+  for (int i = 0;i<ui->listWidget->count();i++)
   {
     shenmeshenme = i;
     if(ima.contains(ui->listWidget->item(i)->text()))
@@ -100,10 +122,9 @@ void Widget::kuai()
     }
     else
     {
-      QNetworkReply *r;
-      r=imi->get(QNetworkRequest(facelist[i]));}
+      imi->get(QNetworkRequest(face_hash[ui->listWidget->item(i)->text()]));}
     }
-  facelist.clear();
+
 }
 
 void Widget::shuchu(QNetworkReply *r)
@@ -135,8 +156,6 @@ void Widget::getmedal()
   tot = -1;
   if(fight>0)
   {
-//    qDebug()<<fight;
-    QNetworkReply *reply;
     QNetworkRequest reqg;
     QList<QNetworkCookie> cookies;
     cookies.append(QNetworkCookie("SESSDATA",nv.find("SESSDATA").value()));
@@ -147,7 +166,7 @@ void Widget::getmedal()
     //jar->setCookiesFromUrl(cookies, QUrl("https://api.live.bilibili.com/fans_medal/v1/FansMedal/get_list_in_room"));
     jar->setCookiesFromUrl(cookies, QUrl("https://api.live.bilibili.com/fans_medal/v2/HighQps/received_medals?page="+QString::number(fight)));
     m->setCookieJar(jar);
-    reply=m->get(reqg);
+    m->get(reqg);
   }
 }
 void Widget::sav(QNetworkReply* reply)
@@ -162,12 +181,11 @@ void Widget::sav(QNetworkReply* reply)
   QVariant statusCode = reply->attribute(QNetworkRequest::HttpStatusCodeAttribute);
   if(statusCode.isValid())
   {
-    qDebug() << "save status code=" << statusCode;
+    qDebug() << "save status code=" << statusCode.toInt();
   }
     QString string=nullptr;
     QByteArray b=reply->readAll();
     string =QString::fromUtf8(b,b.size());
-//    qDebug()<<"888:"<<string;
     QJsonParseError e;
     QJsonDocument d = QJsonDocument::fromJson(string.toStdString().data(),&e);
   if(e.error==0)
@@ -191,7 +209,7 @@ void Widget::sav(QNetworkReply* reply)
       {fight++;qDebug()<<fight;getmedal();}
     else if(fight>=tot && tot>0)
       {
-       qDebug()<<hash;
+//       qDebug()<<hash;
       m->disconnect(m, SIGNAL(finished(QNetworkReply*)),this, SLOT(sav(QNetworkReply*)));
       }
      }
@@ -201,7 +219,6 @@ void Widget::sav(QNetworkReply* reply)
 }
 void Widget::wear(QByteArray arr)
 {
-  QNetworkReply *r;
   QNetworkRequest req;
   QList<QNetworkCookie> allcookies;
   allcookies.append(QNetworkCookie("SESSDATA",nv.find("SESSDATA").value()));
@@ -214,13 +231,12 @@ void Widget::wear(QByteArray arr)
   req.setUrl(QUrl("https://api.live.bilibili.com/xlive/web-room/v1/fansMedal/wear"));
   req.setHeader(QNetworkRequest::ContentTypeHeader,QVariant("application/x-www-form-urlencoded"));
   req.setHeader(QNetworkRequest::ContentLengthHeader,contentLength);
-  r=m->post(req,dataArray);
-  connect(m,SIGNAL(finished(QNetworkReply *)),this,SLOT(shuchu(QNetworkReply *)));
+  m->post(req,dataArray);
+  connect(m,SIGNAL(finished(QNetworkReply*)),this,SLOT(shuchu(QNetworkReply*)));
 }
 
 void Widget::unwear()
 {
-  QNetworkReply *r;
   QNetworkRequest req;
   QList<QNetworkCookie> allcookies;
   allcookies.append(QNetworkCookie("SESSDATA",nv.find("SESSDATA").value()));
@@ -232,8 +248,8 @@ void Widget::unwear()
   req.setUrl(QUrl("https://api.live.bilibili.com/xlive/web-room/v1/fansMedal/take_off"));
   req.setHeader(QNetworkRequest::ContentTypeHeader,QVariant("application/x-www-form-urlencoded"));
   req.setHeader(QNetworkRequest::ContentLengthHeader,contentLength);
-  r=m->post(req,dataArray);
-  connect(m,SIGNAL(finished(QNetworkReply *)),this,SLOT(shuchu(QNetworkReply *)));
+  m->post(req,dataArray);
+  connect(m,SIGNAL(finished(QNetworkReply*)),this,SLOT(shuchu(QNetworkReply*)));
 }
 
 void Widget::finishedSlot(QNetworkReply* r)
@@ -241,6 +257,19 @@ void Widget::finishedSlot(QNetworkReply* r)
   QByteArray bytes;
   if(r->error()==0)
   bytes = r->readAll();
+  else
+  {
+  QTime current_time =QTime::currentTime();
+  QString t=current_time.toString();
+  QVariant statusCode = r->attribute(QNetworkRequest::HttpStatusCodeAttribute);
+  if(statusCode.isValid())
+  {
+      qDebug() << "status code=" << statusCode.toInt();
+      t+="   "+statusCode.toString();
+  }
+
+  ui->textEdit->insertPlainText(t+"   "+r->errorString()+"\n");
+  }
   if (tot==0)
   getmedal();
   r->deleteLater();
@@ -259,12 +288,25 @@ void Widget::finishedSlot(QNetworkReply* r)
     QJsonObject json2=value.toObject();
     QJsonValue value2 = json2.value("count");
     if(value2.toInt()==0)
+    {
       val++;
+      if (val==1)
+      {
+      himitsu("bilibili.com",&nv);
+      QList<QNetworkCookie> allcookies;
+      QHash<QByteArray, QByteArray>::iterator i = nv.begin();
+      while (i != nv.end()) {
+          allcookies.append(QNetworkCookie(i.key(),i.value()));
+          ++i;
+      }
+      QNetworkCookieJar *jar = new QNetworkCookieJar();
+      jar->setCookiesFromUrl(allcookies, QUrl("https://api.vc.bilibili.com/dynamic_svr/v1/dynamic_svr/w_live_users?size=100"));
+      jar->setCookiesFromUrl(allcookies, QUrl("https://api.bilibili.com/x/polymer/web-dynamic/v1/portal"));
+      manager->setCookieJar(jar);}
+    }
     else
       val=0;
-    QFont list_font;
-    list_font.setPointSize(20);
-    ui->label->setFont(list_font);
+
     QJsonValue value3 = json2.value("items");
     QJsonArray ja=value3.toArray();
     QTime current_time =QTime::currentTime();
@@ -272,82 +314,120 @@ void Widget::finishedSlot(QNetworkReply* r)
     ui->textEdit->setText(t+"   第"+QString::number(myT->id)+"次请求正常");
     QSet <QString> set;
     QStringList list,titlelist;
-    QList<QUrl> facelist_t;
     ui->label->setText("在线人数："+QString::number(value2.toDouble()));
+
+
+    QSet<QString> futari1,futari0;
+    if (!dataHash.isEmpty())
+    {
+      auto it = dataHash.begin();
+      while (it != dataHash.end())
+      {
+      if (it.value().first.addSecs(60)<current_time)
+      {
+          it = dataHash.erase(it);
+      }
+      else
+      {
+          if (it.value().second==1)
+              futari1<<it.key();
+          else
+              futari0<<it.key();
+          ++it;
+      }
+      }
+    }
+
+
+
     if(val==0||(val>1&&value2.toInt()==0))
     {
-      livelist.clear();
         for(int ii=0;ii<ja.count();ii++){
       QJsonObject arrObj= ja[ii].toObject();
       QString s=arrObj["uname"].toString();
-      list<<s;set<<s;
+      set<<s;
+
+      if (!link_hash.contains(s))
+      {
       QString link=arrObj["link"].toString();
-      livelist<<link;
+      link_hash.insert(s,link);
+      }
       QString title=arrObj["title"].toString();
       titlelist<<title;
-      QString sss=arrObj["face"].toString();
-      facelist_t<<sss;
-      url_dic.insert(sss,s);
-    }
-      facelist=facelist_t;
-    if(g_set!=set)
-      {QTime current_time =QTime::currentTime();
-        /*bool b=true;
-      if(c_time.isNull()){
-      b=true;
+      title_hash.insert(s,title);
+      if (!face_hash.contains(s))
+      {
+        QString sss=arrObj["face"].toString();
+        face_hash.insert(s,sss);
+        url_dic.insert(sss,s);
       }
-      else
-        b=(c_time.secsTo(current_time))>10;
-      bool b1=f==set-g_set;bool b2=o==g_set-set;qDebug()<<b1<<b2;
-      if(((!(f==set-g_set||o==g_set-set))&&b)||c_time.isNull()||(f.isEmpty()&&g_set.isEmpty())) {*/
-        //mutex.lock();
-      ui->listWidget->setFont(list_font);
-      ui->listWidget->clear();
-      ui->listWidget->addItems(list);
-      kuai();
-      for(int t=0;t<titlelist.count();t++)
-        ui->listWidget->item(t)->setToolTip(titlelist.at(t)+"\n打开"+ui->listWidget->item(t)->text()+"的直播间");
+    }
+    set.unite(futari1);
+    set.subtract(futari0);
+//    qDebug()<<dataHash;
+//    qDebug()<<set;
+//    qDebug()<<"g:"<<g_set;
+    for (QSet<QString>::const_iterator iter = set.constBegin(); iter != set.constEnd(); ++iter) {
+      const QString& element = *iter;
+      list.append(element);
+    }
+    if(g_set!=set)
+      {
+      g_list = list;
+      emit updateSignal();
+
       QSet <QString> ons,offs;
       if(ui->checkBox->isChecked())
       {
-        //qDebug()<<"ggg:"<<string;
-      //QSet <QString> ons,offs;
       QStringList on,off;
       QString onnn,offf,zennbu;
-      ons=set-g_set;offs=g_set-set;g_set=set;
-      //o=ons;f=offs;
+      ons=set-g_set;offs=g_set-set;
       on=ons.values();off=offs.values();
       if(!ons.isEmpty())
-      {onnn=on.join(",\n");onnn+="上线了！";}
+      {
+              onnn=on.join(",\n");onnn+="上线了！";
+              for (QSet<QString>::const_iterator iter = ons.constBegin(); iter != ons.constEnd(); ++iter) {
+                  const QString& element = *iter;
+                  dataHash.insert(element, QPair<QTime, int>(current_time, 1));
+              }
+        g_set = set;
+      }
+
       if(!offs.isEmpty())
       {if(!ons.isEmpty())
           offf='\n';
-        offf+=off.join(",\n");offf+="下线了！";}
+        offf+=off.join(",\n");offf+="下线了！";
+        for (QSet<QString>::const_iterator iter = offs.constBegin(); iter != offs.constEnd(); ++iter) {
+          const QString& element = *iter;
+          dataHash.insert(element, QPair<QTime, int>(current_time, 0));
+        }
+        g_set = set;
+      }
       zennbu=onnn+offf;
-      qDebug()<<(c_time.secsTo(current_time)>10)<<((f.isEmpty()&&!o.isEmpty())&&(o!=offs)&&(f!=ons));
-      if(c_time.secsTo(current_time)>10||((f.isEmpty()&&!o.isEmpty())&&(o!=offs)&&(f!=ons)))
-      {o=ons;f=offs;c_time=QTime::currentTime();
+      if(myT->id!= 1&&(!offs.isEmpty()||!ons.isEmpty()))
+      {
         //QMessageBox::information(nullptr,"提示",zennbu);
         QMessageBox messageBox(QMessageBox::Information,"提示",zennbu,
                                    QMessageBox::Ok, NULL);
         messageBox.setWindowFlag(Qt::WindowStaysOnTopHint);
         messageBox.exec();
       }
-      else
-      {o=ons;f=offs;c_time=QTime::currentTime();}
-      }
-       o=ons;f=offs;
-      c_time=QTime::currentTime();
-      g_set=set;
+
+
     }
-  }}
+      g_set = set;
+    }
+    }
+  }
+
         else
   {
     QTime current_time =QTime::currentTime();
     QString t=current_time.toString();
-    ui->textEdit->insertPlainText(t+"「あなたに逢えなくなって、錆びた時計と泣いたけど…」\n");
+    ui->textEdit->insertPlainText(t+"「あなたに逢えなくなって、錆びた時計と泣いたけど…」\n"+string);
   }
 }
+
 void Widget::getURLImage(QNetworkReply *r)
 {
   QByteArray bytes;
@@ -382,13 +462,14 @@ void Widget::on_listWidget_itemClicked()
 void Widget::on_listWidget_itemDoubleClicked()
 {
   QString s;
-  QDesktopServices::openUrl(QUrl(livelist.at(ui->listWidget->currentRow())));
+  QDesktopServices::openUrl(QUrl(link_hash[ui->listWidget->currentItem()->text()]));
   QHash<QString, QString>::iterator i;
   i = hash.find(ui->listWidget->item(ui->listWidget->currentRow())->text());
   while (i != hash.end()&&i.key()==ui->listWidget->item(ui->listWidget->currentRow())->text()) {
     s=i.value();
     ++i;}
   if (nv.count()>0)
+  {
     if(s!=nullptr)
     {
       QByteArray arr=s.toLatin1();
@@ -396,15 +477,7 @@ void Widget::on_listWidget_itemDoubleClicked()
     }
     else
       unwear();
-  else
-    {
-    if(s!=nullptr)
-    {
-      QTime current_time =QTime::currentTime();
-      QString t=current_time.toString();
-      ui->textEdit->insertPlainText(t+"   缺少bili_jct无法自动佩戴粉丝勋章\n");
-    }
-    }
+  }
 }
 void Widget::dealClose()
 {
@@ -432,7 +505,6 @@ void Widget::enterEvent(QEnterEvent *)
 
 void Widget::leaveEvent(QEvent *)
 {
-
   if(geometry().y()==30 && QCursor().pos().y()>30){
   animation = new QPropertyAnimation(this,"pos");
   animation->setTargetObject(this);
@@ -445,6 +517,7 @@ void Widget::leaveEvent(QEvent *)
 
 Widget::~Widget()
 {
+  dealClose();
   delete ui;
 }
 void Widget::on_spinBox_valueChanged(int arg1)
