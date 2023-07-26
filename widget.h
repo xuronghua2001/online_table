@@ -1,8 +1,8 @@
 #ifndef WIDGET_H
 #define WIDGET_H
 #include "Multithreading.h"
-#include "himitsu.h"
 #include <QWidget>
+#include <QMouseEvent>
 #include <QListWidgetItem>
 #include <QThread>
 #include <QtNetwork>
@@ -44,6 +44,8 @@ signals:
 protected:
   void enterEvent(QEnterEvent *);
   void leaveEvent(QEvent *);
+
+
 
 private:
   Ui::Widget *ui;

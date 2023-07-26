@@ -1,4 +1,5 @@
 #include "widget.h"
+#include "himitsu.h"
 #include "ui_widget.h"
 #include <QApplication>
 #include <QTimer>
@@ -22,6 +23,7 @@ static int fight=1,tot=0,val=0;
 QByteArray bytes;
 QStringList g_list;
 QSet <QString> g_set;
+
 Widget::Widget(QWidget *parent)
     : QWidget(parent,Qt::Widget| Qt::WindowStaysOnTopHint)
       , ui(new Ui::Widget)
@@ -37,7 +39,7 @@ Widget::Widget(QWidget *parent)
   connect(manager, SIGNAL(finished(QNetworkReply*)),this, SLOT(finishedSlot(QNetworkReply*)));
 //  connect(imi, SIGNAL(finished(QNetworkReply *)),this, SLOT(getURLImage(QNetworkReply *)));
   connect(myT, &MyThread::mySignal, this, &Widget::dealSignal);
-  connect(this, &Widget::updateSignal, this, &Widget::updateSlot);
+//  connect(this, &Widget::updateSignal, this, &Widget::updateSlot);
   connect(this, &Widget::startThread,myT, &MyThread::myTimeout);
   connect(imi, SIGNAL(finished(QNetworkReply*)),this, SLOT(getURLImage(QNetworkReply*)));
 
@@ -323,7 +325,7 @@ void Widget::finishedSlot(QNetworkReply* r)
       auto it = dataHash.begin();
       while (it != dataHash.end())
       {
-      if (it.value().first.addSecs(60)<current_time)
+      if (it.value().first.addSecs(300)<current_time)
       {
           it = dataHash.erase(it);
       }
@@ -374,7 +376,16 @@ void Widget::finishedSlot(QNetworkReply* r)
     if(g_set!=set)
       {
       g_list = list;
-      emit updateSignal();
+//      emit updateSignal();
+      ui->listWidget->clear();
+      ui->listWidget->addItems(g_list);
+      for(int t=0;t<g_list.size();t++)
+        ui->listWidget->item(t)->setToolTip(title_hash[ui->listWidget->item(t)->text()]+"\n打开"+ui->listWidget->item(t)->text()+"的直播间");
+      kuai();
+
+
+
+
 
       QSet <QString> ons,offs;
       if(ui->checkBox->isChecked())
@@ -382,6 +393,7 @@ void Widget::finishedSlot(QNetworkReply* r)
       QStringList on,off;
       QString onnn,offf,zennbu;
       ons=set-g_set;offs=g_set-set;
+      g_set = set;
       on=ons.values();off=offs.values();
       if(!ons.isEmpty())
       {
@@ -390,7 +402,6 @@ void Widget::finishedSlot(QNetworkReply* r)
                   const QString& element = *iter;
                   dataHash.insert(element, QPair<QTime, int>(current_time, 1));
               }
-        g_set = set;
       }
 
       if(!offs.isEmpty())
@@ -401,7 +412,6 @@ void Widget::finishedSlot(QNetworkReply* r)
           const QString& element = *iter;
           dataHash.insert(element, QPair<QTime, int>(current_time, 0));
         }
-        g_set = set;
       }
       zennbu=onnn+offf;
       if(myT->id!= 1&&(!offs.isEmpty()||!ons.isEmpty()))
@@ -415,7 +425,8 @@ void Widget::finishedSlot(QNetworkReply* r)
 
 
     }
-      g_set = set;
+
+//      g_set = set;
     }
     }
   }
@@ -452,13 +463,16 @@ void Widget::getURLImage(QNetworkReply *r)
     ui->listWidget->item(i)->setIcon(QPixmap::fromImage(pixmap));
   }
 }
-
 void Widget::on_listWidget_itemClicked()
 {
   for(int i=0;i<ui->listWidget->count();i++)
-    if(hash.contains(ui->listWidget->item(i)->text()))
-      ui->listWidget->item(i)->setForeground(QColor(255,215,130));
+    if(ui->listWidget->item(i)->foreground()!=QColor(255,215,130)&&hash.contains(ui->listWidget->item(i)->text())){
+    ui->listWidget->item(i)->setForeground(QColor(255,215,130));
+    QListWidgetItem *item=ui->listWidget->takeItem(i);
+    ui->listWidget->insertItem(0,item);
+    }
 }
+
 void Widget::on_listWidget_itemDoubleClicked()
 {
   QString s;
