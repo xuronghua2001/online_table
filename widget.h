@@ -17,17 +17,15 @@ QT_END_NAMESPACE
 
   public:
   Widget(QWidget *parent = nullptr);
-  void dealSignal();//处理子线程响应函数，
-  void fff();
-  void dealClose();//关闭线程响应
+
   ~Widget();
   signals:
   void startThread();
-  void updateSignal();
+
   private slots:
   void updateSlot();
   void on_listWidget_itemDoubleClicked();
-  void on_listWidget_itemClicked();
+  void item_medal_sort();
   void finishedSlot(QNetworkReply* r);
   void getURLImage(QNetworkReply *);
   void getmedal();
@@ -38,8 +36,6 @@ QT_END_NAMESPACE
   void sav(QNetworkReply* reply);
   void wear(QByteArray arr);
   void unwear();
-signals:
-  void fen();
 
 protected:
   void enterEvent(QEnterEvent *);
@@ -48,6 +44,9 @@ protected:
 
 
 private:
+  void dealSignal();//处理子线程响应函数，
+  void fff();
+  void dealClose();//关闭线程响应
   Ui::Widget *ui;
   QNetworkAccessManager *m;
   QNetworkAccessManager *imi;
@@ -60,5 +59,6 @@ private:
   QHash<QString, QString> link_hash;
   QHash<QString, QUrl> face_hash;
   QHash<QString, QPair<QTime, int>> dataHash;
+  QHash<QString, QString> medal_hash;
 };
 #endif // WIDGET_H

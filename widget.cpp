@@ -15,7 +15,7 @@
 #include <QDateTime>
 #include <QMessageBox>
 #include <QSize>
-QHash<QString, QString> hash;
+
 QHash<QString,QImage> ima;
 QHash<QByteArray,QByteArray>nv;
 static int shenmeshenme=0;
@@ -39,7 +39,6 @@ Widget::Widget(QWidget *parent)
   connect(manager, SIGNAL(finished(QNetworkReply*)),this, SLOT(finishedSlot(QNetworkReply*)));
 //  connect(imi, SIGNAL(finished(QNetworkReply *)),this, SLOT(getURLImage(QNetworkReply *)));
   connect(myT, &MyThread::mySignal, this, &Widget::dealSignal);
-//  connect(this, &Widget::updateSignal, this, &Widget::updateSlot);
   connect(this, &Widget::startThread,myT, &MyThread::myTimeout);
   connect(imi, SIGNAL(finished(QNetworkReply*)),this, SLOT(getURLImage(QNetworkReply*)));
 
@@ -205,17 +204,17 @@ void Widget::sav(QNetworkReply* reply)
     QString s=arrObj["target_name"].toString();
     QString medal_id=QString::number(arrObj["medal_id"].toInt());
     //qDebug()<<medal_id;
-    hash.insert(s,medal_id);
+    medal_hash.insert(s,medal_id);
     }
     if(fight<tot)
       {fight++;qDebug()<<fight;getmedal();}
     else if(fight>=tot && tot>0)
       {
-//       qDebug()<<hash;
+      item_medal_sort();
       m->disconnect(m, SIGNAL(finished(QNetworkReply*)),this, SLOT(sav(QNetworkReply*)));
       }
      }
-  qDebug()<<hash.count();
+  qDebug()<<medal_hash.count();
   }
   reply->deleteLater();
 }
@@ -373,14 +372,15 @@ void Widget::finishedSlot(QNetworkReply* r)
       const QString& element = *iter;
       list.append(element);
     }
+
     if(g_set!=set)
       {
       g_list = list;
-//      emit updateSignal();
       ui->listWidget->clear();
       ui->listWidget->addItems(g_list);
       for(int t=0;t<g_list.size();t++)
         ui->listWidget->item(t)->setToolTip(title_hash[ui->listWidget->item(t)->text()]+"\n打开"+ui->listWidget->item(t)->text()+"的直播间");
+      item_medal_sort();
       kuai();
 
 
@@ -414,6 +414,7 @@ void Widget::finishedSlot(QNetworkReply* r)
         }
       }
       zennbu=onnn+offf;
+
       if(myT->id!= 1&&(!offs.isEmpty()||!ons.isEmpty()))
       {
         //QMessageBox::information(nullptr,"提示",zennbu);
@@ -427,6 +428,7 @@ void Widget::finishedSlot(QNetworkReply* r)
     }
 
 //      g_set = set;
+
     }
     }
   }
@@ -463,10 +465,10 @@ void Widget::getURLImage(QNetworkReply *r)
     ui->listWidget->item(i)->setIcon(QPixmap::fromImage(pixmap));
   }
 }
-void Widget::on_listWidget_itemClicked()
+void Widget::item_medal_sort()
 {
   for(int i=0;i<ui->listWidget->count();i++)
-    if(ui->listWidget->item(i)->foreground()!=QColor(255,215,130)&&hash.contains(ui->listWidget->item(i)->text())){
+    if(ui->listWidget->item(i)->foreground()!=QColor(255,215,130)&&medal_hash.contains(ui->listWidget->item(i)->text())){
     ui->listWidget->item(i)->setForeground(QColor(255,215,130));
     QListWidgetItem *item=ui->listWidget->takeItem(i);
     ui->listWidget->insertItem(0,item);
@@ -478,8 +480,8 @@ void Widget::on_listWidget_itemDoubleClicked()
   QString s;
   QDesktopServices::openUrl(QUrl(link_hash[ui->listWidget->currentItem()->text()]));
   QHash<QString, QString>::iterator i;
-  i = hash.find(ui->listWidget->item(ui->listWidget->currentRow())->text());
-  while (i != hash.end()&&i.key()==ui->listWidget->item(ui->listWidget->currentRow())->text()) {
+  i = medal_hash.find(ui->listWidget->item(ui->listWidget->currentRow())->text());
+  while (i != medal_hash.end()&&i.key()==ui->listWidget->item(ui->listWidget->currentRow())->text()) {
     s=i.value();
     ++i;}
   if (nv.count()>0)
